@@ -14,6 +14,7 @@ import { ClicksChart } from '../../ui/clicks-chart'
 import { Container, PageShell } from '../../ui/page-shell'
 import { Stat } from '../../ui/stat'
 import { CreatedLink } from '../links/created-link'
+import { EditLinkDialog } from '../links/edit-link-dialog'
 import { CreateLinkForm } from '../links/create-link-form'
 import { LinksTable } from '../links/links-table'
 import { LinkStatsDialog } from '../links/link-stats-dialog'
@@ -62,9 +63,10 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
   const [days, setDays] = useState(30)
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState<string | null>(null)
-  const [created, setCreated] = useState<LinkItem | null>(null)
+  const [created, setCreated] = useState<{ link: LinkItem; reused: boolean } | null>(null)
   const [qrLink, setQrLink] = useState<LinkItem | null>(null)
   const [statsLink, setStatsLink] = useState<LinkItem | null>(null)
+  const [editLink, setEditLink] = useState<LinkItem | null>(null)
 
   const query = useDebouncedValue(search.trim(), 250)
   const sort: SortKey = 'created'
@@ -94,15 +96,28 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
     void links.reload()
   }
 
-  const onCreated = (link: LinkItem) => {
-    links.setData((current) => ({ ...current, items: [link, ...current.items] }))
-    setCreated(link)
-    void overview.reload()
+  const onCreated = (link: LinkItem, reused: boolean) => {
+    links.setData((current) => ({
+      ...current,
+      // A reused link is already in the list; adding it again would show it twice.
+      items: reused ? current.items : [link, ...current.items],
+    }))
+    setCreated({ link, reused })
+    if (!reused) void overview.reload()
+  }
+
+  const onSaved = (link: LinkItem) => {
+    links.setData((current) => ({
+      ...current,
+      items: current.items.map((item) => (item.id === link.id ? link : item)),
+      tags: [...new Set([...current.tags, ...link.tags])].sort(),
+    }))
+    setCreated((current) => (current?.link.id === link.id ? { ...current, link } : current))
   }
 
   const onDeleted = (id: string) => {
     links.setData((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }))
-    setCreated((current) => (current?.id === id ? null : current))
+    setCreated((current) => (current?.link.id === id ? null : current))
     void overview.reload()
   }
 
@@ -150,7 +165,12 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
         <CreateLinkForm knownTags={knownTags} onCreated={onCreated} />
 
         {created && (
-          <CreatedLink link={created} onShowQr={setQrLink} onDismiss={() => setCreated(null)} />
+          <CreatedLink
+            link={created.link}
+            reused={created.reused}
+            onShowQr={setQrLink}
+            onDismiss={() => setCreated(null)}
+          />
         )}
 
         {overview.error ? (
@@ -276,6 +296,7 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
               onDeleted={onDeleted}
               onShowQr={setQrLink}
               onShowStats={setStatsLink}
+              onEdit={setEditLink}
               onClearFilters={() => {
                 setSearch('')
                 setTag(null)
@@ -286,6 +307,7 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
       </Container>
 
       <QrDialog link={qrLink} onClose={() => setQrLink(null)} />
+      <EditLinkDialog link={editLink} onClose={() => setEditLink(null)} onSaved={onSaved} />
       <LinkStatsDialog link={statsLink} onClose={() => setStatsLink(null)} />
     </PageShell>
   )

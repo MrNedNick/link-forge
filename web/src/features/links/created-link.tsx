@@ -10,10 +10,12 @@ import { shortenUrl } from '../../lib/format'
  */
 export function CreatedLink({
   link,
+  reused,
   onShowQr,
   onDismiss,
 }: {
   link: LinkItem
+  reused?: boolean
   onShowQr: (link: LinkItem) => void
   onDismiss: () => void
 }) {
@@ -23,7 +25,9 @@ export function CreatedLink({
       className="flex flex-col gap-3 rounded-xl border border-accent/30 bg-accent/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
     >
       <div className="min-w-0">
-        <p className="text-xs font-medium tracking-wide text-accent uppercase">Your short link is ready</p>
+        <p className="text-xs font-medium tracking-wide text-accent uppercase">
+          {reused ? 'You already had this one' : 'Your short link is ready'}
+        </p>
         <a
           href={link.shortUrl}
           target="_blank"

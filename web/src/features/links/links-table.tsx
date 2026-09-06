@@ -23,6 +23,7 @@ export function LinksTable({
   onDeleted,
   onShowQr,
   onShowStats,
+  onEdit,
   onClearFilters,
 }: {
   links: LinkItem[]
@@ -31,6 +32,7 @@ export function LinksTable({
   onDeleted: (id: string) => void
   onShowQr: (link: LinkItem) => void
   onShowStats: (link: LinkItem) => void
+  onEdit: (link: LinkItem) => void
   onClearFilters: () => void
 }) {
   const confirm = useConfirm()
@@ -150,6 +152,9 @@ export function LinksTable({
           </Button>
           <Button variant="ghost" size="sm" onClick={() => onShowQr(link)} aria-label={`QR code for ${link.code}`}>
             QR
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onEdit(link)} aria-label={`Edit ${link.code}`}>
+            Edit
           </Button>
           <Button
             variant="ghost"
