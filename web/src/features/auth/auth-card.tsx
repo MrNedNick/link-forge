@@ -2,7 +2,8 @@ import { useId, useState, type FormEvent } from 'react'
 import { Button } from '../../components/button/button'
 import { Field } from '../../components/field/field'
 import { Input } from '../../components/input/input'
-import { errorMessage } from '../../api/client'
+import { errorField, errorMessage } from '../../api/client'
+import { MAX_EMAIL_LENGTH, MAX_PASSWORD_LENGTH } from '../../lib/limits'
 
 export const DEMO = { email: 'demo@link-forge.dev', password: 'forge-demo-2026' }
 
@@ -19,7 +20,7 @@ export function AuthCard({
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; field?: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
   const submit = async (event: FormEvent, credentials = { email, password }) => {
@@ -29,7 +30,7 @@ export function AuthCard({
     try {
       await (mode === 'signin' ? onSignIn : onSignUp)(credentials.email, credentials.password)
     } catch (cause) {
-      setError(errorMessage(cause))
+      setError({ message: errorMessage(cause), field: errorField(cause) })
     } finally {
       setBusy(false)
     }
@@ -73,11 +74,12 @@ export function AuthCard({
       </div>
 
       <form id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${mode}`} onSubmit={submit} className="space-y-4" noValidate>
-        <Field label="Email" required>
+        <Field label="Email" required error={error?.field === 'email' ? error.message : undefined}>
           <Input
             type="email"
             name="email"
             autoComplete="email"
+            maxLength={MAX_EMAIL_LENGTH}
             placeholder="you@example.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -89,12 +91,13 @@ export function AuthCard({
           label="Password"
           required
           hint={mode === 'signup' ? 'At least 8 characters.' : undefined}
-          error={error ?? undefined}
+          error={error && error.field !== 'email' ? error.message : undefined}
         >
           <Input
             type="password"
             name="password"
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            maxLength={MAX_PASSWORD_LENGTH}
             placeholder="••••••••"
             value={password}
             onChange={(event) => setPassword(event.target.value)}

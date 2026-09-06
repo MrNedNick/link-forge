@@ -3,26 +3,18 @@ import { Button } from '../../components/button/button'
 import { Field } from '../../components/field/field'
 import { Input } from '../../components/input/input'
 import { Select } from '../../components/select/select'
-import { api, errorMessage, unwrap } from '../../api/client'
+import { api, errorField, errorMessage, unwrap } from '../../api/client'
 import type { LinkItem } from '../../api/types'
+import { EXPIRY_OPTIONS, MAX_TAGS, expiryFromDays, parseTags } from '../../lib/tags'
+import { MAX_CODE_LENGTH, MAX_TITLE_LENGTH, MAX_URL_LENGTH } from '../../lib/limits'
 
-const EXPIRY_OPTIONS = [
-  { value: '', label: 'Never expires' },
-  { value: '1', label: 'In 24 hours' },
-  { value: '7', label: 'In 7 days' },
-  { value: '30', label: 'In 30 days' },
-  { value: '90', label: 'In 90 days' },
-]
-
-const parseTags = (value: string) =>
-  [...new Set(value.split(/[,\s]+/).map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 8)
 
 export function CreateLinkForm({
   knownTags,
   onCreated,
 }: {
   knownTags: string[]
-  onCreated: (link: LinkItem) => void
+  onCreated: (link: LinkItem, reused: boolean) => void
 }) {
   const [url, setUrl] = useState('')
   const [code, setCode] = useState('')
@@ -30,29 +22,33 @@ export function CreateLinkForm({
   const [tags, setTags] = useState('')
   const [expiry, setExpiry] = useState('')
   const [advanced, setAdvanced] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; field?: string } | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // An error about the custom code belongs under the custom code, not under the
+  // destination — the server says which field it is, so use it.
+  const errorFor = (name: string) =>
+    error && (error.field === name || (error.field === undefined && name === 'url'))
+      ? error.message
+      : undefined
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
     setBusy(true)
     try {
-      const expiresAt = expiry
-        ? new Date(Date.now() + Number(expiry) * 86_400_000).toISOString()
-        : null
-      const { link } = await unwrap(
+      const { link, reused } = await unwrap(
         await api.api.links.$post({
           json: {
             url,
             code: code.trim() || undefined,
             title: title.trim() || undefined,
             tags: parseTags(tags),
-            expiresAt,
+            expiresAt: expiryFromDays(expiry),
           },
         }),
       )
-      onCreated(link as LinkItem)
+      onCreated(link as LinkItem, reused)
       setUrl('')
       setCode('')
       setTitle('')
@@ -60,7 +56,10 @@ export function CreateLinkForm({
       setExpiry('')
       setAdvanced(false)
     } catch (cause) {
-      setError(errorMessage(cause))
+      const field = errorField(cause)
+      setError({ message: errorMessage(cause), field })
+      // A hidden panel would swallow the message that explains the failure.
+      if (field && field !== 'url') setAdvanced(true)
     } finally {
       setBusy(false)
     }
@@ -69,10 +68,11 @@ export function CreateLinkForm({
   return (
     <form onSubmit={submit} className="rounded-xl border border-border bg-surface p-4 sm:p-5" noValidate>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <Field label="Destination URL" className="flex-1" error={error ?? undefined} required>
+        <Field label="Destination URL" className="flex-1" error={errorFor('url')} required>
           <Input
             name="url"
             inputMode="url"
+            maxLength={MAX_URL_LENGTH}
             placeholder="example.com/a-very-long-address"
             value={url}
             onChange={(event) => setUrl(event.target.value)}
@@ -103,23 +103,25 @@ export function CreateLinkForm({
 
       {advanced && (
         <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Custom code" hint="Leave empty for a random one.">
+          <Field label="Custom code" hint="Leave empty for a random one." error={errorFor('code')}>
             <Input
               name="code"
+              maxLength={MAX_CODE_LENGTH}
               placeholder="spring-sale"
               value={code}
               onChange={(event) => setCode(event.target.value)}
             />
           </Field>
-          <Field label="Label" hint="Only you see this.">
+          <Field label="Label" hint="Only you see this." error={errorFor('title')}>
             <Input
               name="title"
+              maxLength={MAX_TITLE_LENGTH}
               placeholder="Spring campaign"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
           </Field>
-          <Field label="Tags" hint="Comma separated.">
+          <Field label="Tags" hint={`Comma separated, up to ${MAX_TAGS}.`} error={errorFor('tags')}>
             <Input
               name="tags"
               list="known-tags"
@@ -128,7 +130,7 @@ export function CreateLinkForm({
               onChange={(event) => setTags(event.target.value)}
             />
           </Field>
-          <Field label="Expires">
+          <Field label="Expires" error={errorFor('expiresAt')}>
             <Select name="expiry" value={expiry} onChange={(event) => setExpiry(event.target.value)}>
               {EXPIRY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>

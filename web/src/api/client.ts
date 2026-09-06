@@ -14,12 +14,15 @@ export type ApiErrorShape = {
   code: string
   message: string
   retryAfter?: number
+  /** Which input caused this, when the server knows. */
+  field?: string
 }
 
 export class ApiError extends Error {
   readonly code: string
   readonly status: number
   readonly retryAfter?: number
+  readonly field?: string
 
   constructor(status: number, body: ApiErrorShape) {
     super(body.message)
@@ -27,6 +30,7 @@ export class ApiError extends Error {
     this.status = status
     this.code = body.code
     this.retryAfter = body.retryAfter
+    this.field = body.field
   }
 }
 
@@ -57,6 +61,11 @@ export async function unwrap<R extends AnyResponse>(response: R): Promise<Succes
     if (response.status === 401) body = { code: 'unauthorized', message: 'Sign in to continue.' }
   }
   throw new ApiError(response.status, body)
+}
+
+/** The input an error belongs under, so a form can show it in the right place. */
+export function errorField(error: unknown): string | undefined {
+  return error instanceof ApiError ? error.field : undefined
 }
 
 export function errorMessage(error: unknown): string {
