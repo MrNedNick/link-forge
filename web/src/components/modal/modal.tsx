@@ -36,17 +36,22 @@ export function Modal({
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
+    if (!open) return
     const dialog = dialogRef.current
     if (!dialog) return
 
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
+    // Captured before showModal() moves focus into the dialog. The element is
+    // unmounted on close rather than closed in place, so the browser does not
+    // return focus on its own and a keyboard user would lose their place.
+    const previous = document.activeElement as HTMLElement | null
 
-    if (!open) return
+    if (!dialog.open) dialog.showModal()
     const { overflow } = document.body.style
     document.body.style.overflow = 'hidden'
+
     return () => {
       document.body.style.overflow = overflow
+      if (previous?.isConnected) previous.focus()
     }
   }, [open])
 
