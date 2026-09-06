@@ -14,8 +14,9 @@ await runMigrations(handle)
 const app = createApp({ db: handle.db })
 
 if (env.isProduction) {
-  app.use('/assets/*', serveStatic({ root: './dist' }))
-  app.use('/favicon.svg', serveStatic({ root: './dist' }))
+  // Registered after the redirect routes, so a short code is never mistaken for
+  // a file. Anything that is not a real file falls through to the dashboard.
+  app.use('/*', serveStatic({ root: './dist' }))
   app.get('*', serveStatic({ path: './dist/index.html' }))
   if (!existsSync('./dist/index.html')) {
     console.warn('dist/index.html is missing - run `npm run build` before `npm start`.')

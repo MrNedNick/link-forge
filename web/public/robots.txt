@@ -1,0 +1,5 @@
+# Only the front page is meant to be indexed. Short codes live at the root, and
+# crawling them would both redirect bots off-site and record clicks nobody made.
+User-agent: *
+Allow: /$
+Disallow: /
