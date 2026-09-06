@@ -101,6 +101,22 @@ describe('rate limits', () => {
     expect(body.error.retryAfter).toBeGreaterThan(0)
   })
 
+  it('does not spend the sign-in budget on people who type the right password', async () => {
+    authLimiter.reset()
+    await signUp(harness, 'regular@example.com', 'correct-horse-battery')
+
+    // Twenty successful sign-ins from one address — a shared office, say — must
+    // not lock the next person out.
+    for (let i = 0; i < 20; i += 1) {
+      harness.client.forget()
+      const response = await harness.client.json('/api/auth/login', 'POST', {
+        email: 'regular@example.com',
+        password: 'correct-horse-battery',
+      })
+      expect(response.status).toBe(200)
+    }
+  })
+
   it('caps how many links one account can mint in an hour', async () => {
     await signUp(harness, 'busy@example.com')
     createLimiter.reset()

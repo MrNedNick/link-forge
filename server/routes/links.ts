@@ -111,7 +111,7 @@ export const linkRoutes = new Hono<AppEnv>()
     const db = c.get('db')
     const body = c.req.valid('json')
 
-    const gate = createLimiter.check(`create:${user.id}`)
+    const gate = createLimiter.hit(`create:${user.id}`)
     if (!gate.ok) {
       throw apiError(429, 'rate_limited', `Slow down — ${gate.limit} links an hour is the cap.`, {
         retryAfter: gate.retryAfter,

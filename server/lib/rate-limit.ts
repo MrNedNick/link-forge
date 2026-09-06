@@ -29,27 +29,43 @@ export function createRateLimiter({
     for (const [key, bucket] of buckets) if (bucket.resetAt <= at) buckets.delete(key)
   }
 
+  const describe = (count: number, resetAt: number, at: number): RateLimitResult => ({
+    ok: count <= limit,
+    limit,
+    remaining: Math.max(0, limit - count),
+    retryAfter: count <= limit ? 0 : Math.max(1, Math.ceil((resetAt - at) / 1000)),
+  })
+
   return {
     limit,
-    check(key: string): RateLimitResult {
+
+    /** Records one use and reports whether it was within the limit. */
+    hit(key: string): RateLimitResult {
       const at = now()
       sweep(at)
       const bucket = buckets.get(key)
 
       if (!bucket || bucket.resetAt <= at) {
-        buckets.set(key, { count: 1, resetAt: at + windowMs })
-        return { ok: true, limit, remaining: limit - 1, retryAfter: 0 }
+        const fresh = { count: 1, resetAt: at + windowMs }
+        buckets.set(key, fresh)
+        return describe(fresh.count, fresh.resetAt, at)
       }
 
       bucket.count += 1
-      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - at) / 1000))
-      return {
-        ok: bucket.count <= limit,
-        limit,
-        remaining: Math.max(0, limit - bucket.count),
-        retryAfter,
-      }
+      return describe(bucket.count, bucket.resetAt, at)
     },
+
+    /**
+     * Reports the current state without recording anything — for limits that
+     * should only count failures, so a valid request never spends the budget.
+     */
+    peek(key: string): RateLimitResult {
+      const at = now()
+      const bucket = buckets.get(key)
+      if (!bucket || bucket.resetAt <= at) return describe(0, at, at)
+      return describe(bucket.count, bucket.resetAt, at)
+    },
+
     reset() {
       buckets.clear()
     },

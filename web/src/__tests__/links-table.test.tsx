@@ -4,12 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmDialogProvider } from '../components/confirm-dialog/confirm-dialog'
 import { ToastProvider } from '../components/toast/toast'
 import { LinksTable } from '../features/links/links-table'
+import type * as ApiClient from '../api/client'
 import type { LinkItem } from '../api/types'
 
 const remove = vi.fn()
 
 vi.mock('../api/client', async () => {
-  const actual = await vi.importActual<typeof import('../api/client')>('../api/client')
+  const actual = await vi.importActual<typeof ApiClient>('../api/client')
   return {
     ...actual,
     api: { api: { links: { ':id': { $delete: (...args: unknown[]) => remove(...args) } } } },

@@ -13,7 +13,7 @@ import type { AppEnv } from '../types.js'
 const redirects = createRateLimiter({ limit: 240, windowMs: 60_000 })
 
 export async function handleRedirect(c: Context<AppEnv>, code: string): Promise<Response> {
-  const gate = redirects.check(`redirect:${clientIp(c)}`)
+  const gate = redirects.hit(`redirect:${clientIp(c)}`)
   if (!gate.ok) {
     return new Response('Too many requests', {
       status: 429,

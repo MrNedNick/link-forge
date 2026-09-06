@@ -20,15 +20,20 @@ const credentials = z.object({
   password: z.string().min(8, 'Use at least 8 characters.').max(200),
 })
 
-// Brute force is the only real threat to a password form, so the limit is per IP
-// and generous enough that a person who mistypes twice never notices it.
+// Brute force is the only real threat to a password form. Only failed attempts
+// are counted, so signing in successfully never spends anyone else's budget on
+// a shared address — and a burst of wrong passwords still hits the wall.
 const attempts = createRateLimiter({ limit: 12, windowMs: 15 * 60_000 })
+
+const tooManyAttempts = (retryAfter: number) =>
+  apiError(429, 'rate_limited', 'Too many attempts. Try again shortly.', { retryAfter })
 
 export const authRoutes = new Hono<AppEnv>()
 
   .post('/register', zValidator('json', credentials), async (c) => {
-    const gate = attempts.check(`auth:${clientIp(c)}`)
-    if (!gate.ok) throw apiError(429, 'rate_limited', 'Too many attempts. Try again shortly.', { retryAfter: gate.retryAfter })
+    const ip = clientIp(c)
+    const gate = attempts.peek(`auth:${ip}`)
+    if (!gate.ok) throw tooManyAttempts(gate.retryAfter)
 
     const { email, password } = c.req.valid('json')
     const db = c.get('db')
@@ -38,7 +43,10 @@ export const authRoutes = new Hono<AppEnv>()
       .from(users)
       .where(sql`lower(${users.email}) = ${email}`)
       .limit(1)
-    if (existing) throw apiError(409, 'conflict', 'That email already has an account.')
+    if (existing) {
+      attempts.hit(`auth:${ip}`)
+      throw apiError(409, 'conflict', 'That email already has an account.')
+    }
 
     const [user] = await db
       .insert(users)
@@ -52,8 +60,9 @@ export const authRoutes = new Hono<AppEnv>()
   })
 
   .post('/login', zValidator('json', credentials), async (c) => {
-    const gate = attempts.check(`auth:${clientIp(c)}`)
-    if (!gate.ok) throw apiError(429, 'rate_limited', 'Too many attempts. Try again shortly.', { retryAfter: gate.retryAfter })
+    const ip = clientIp(c)
+    const gate = attempts.peek(`auth:${ip}`)
+    if (!gate.ok) throw tooManyAttempts(gate.retryAfter)
 
     const { email, password } = c.req.valid('json')
     const db = c.get('db')
@@ -65,8 +74,10 @@ export const authRoutes = new Hono<AppEnv>()
       .limit(1)
 
     // Same message either way: a different one turns the form into an account oracle.
-    const invalid = apiError(401, 'unauthorized', 'Email or password is wrong.')
-    if (!user || !(await verifyPassword(password, user.passwordHash))) throw invalid
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      attempts.hit(`auth:${ip}`)
+      throw apiError(401, 'unauthorized', 'Email or password is wrong.')
+    }
 
     const session = await createSession(db, user.id, c.req.header('user-agent'))
     setSessionCookie(c, session.token, session.expiresAt)
