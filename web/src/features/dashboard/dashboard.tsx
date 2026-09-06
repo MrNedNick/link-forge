@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Badge } from '../../components/badge/badge'
 import { Button } from '../../components/button/button'
 import { Input } from '../../components/input/input'
@@ -53,6 +53,12 @@ function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
+  // Signing in from the bottom of a long landing page would otherwise drop the
+  // user into the middle of the dashboard.
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [])
+
   const [days, setDays] = useState(30)
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState<string | null>(null)
