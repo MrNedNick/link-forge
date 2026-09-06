@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Link Forge — short links with real analytics</title>
+    <meta
+      name="description"
+      content="Self-hosted short links with tags, expiry, QR codes and a click dashboard. Own API, own Postgres schema, real migrations."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Applied before first paint so a dark-mode reload never flashes white.
+      try {
+        var stored = JSON.parse(localStorage.getItem('link-forge:theme') || '""')
+        if (stored === 'dark' || stored === 'light') document.documentElement.classList.add(stored)
+      } catch (error) {
+        void error
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
