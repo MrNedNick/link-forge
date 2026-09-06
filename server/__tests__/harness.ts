@@ -56,6 +56,20 @@ export async function signUp(harness: Harness, email: string, password = 'super-
   return response
 }
 
+export type ApiLink = {
+  id: string
+  code: string
+  url: string
+  title: string | null
+  tags: string[]
+  expiresAt: string | null
+  createdAt: string
+  shortUrl: string
+  clicks: number
+  visitors: number
+  expired: boolean
+}
+
 export function createLink(harness: Harness, body: Record<string, unknown>) {
-  return harness.client.json<{ link: { id: string; code: string } }>('/api/links', 'POST', body)
+  return harness.client.json<{ link: ApiLink; reused: boolean }>('/api/links', 'POST', body)
 }

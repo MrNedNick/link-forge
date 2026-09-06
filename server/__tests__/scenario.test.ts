@@ -115,7 +115,17 @@ describe('custom codes', () => {
 
   it('rejects a destination that is not a web address', async () => {
     await signUp(harness, 'validate@example.com')
-    const bad = await createLink(harness, { url: 'javascript:alert(1)', tags: [] })
-    expect(bad.status).toBe(400)
+    const bad = await harness.client.json<{ error: { code: string; message: string; field?: string } }>(
+      '/api/links',
+      'POST',
+      { url: 'javascript:alert(1)', tags: [] },
+    )
+    expect(bad.status).toBe(422)
+    // A rejected field comes back as a sentence plus the field it belongs to,
+    // not as a serialised ZodError.
+    const { error } = await bad.json()
+    expect(error.code).toBe('invalid')
+    expect(error.message).toBe('Only http and https links can be shortened.')
+    expect(error.field).toBe('url')
   })
 })
