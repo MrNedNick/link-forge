@@ -5,7 +5,7 @@
   "description": "Self-hosted short links with click analytics: own API, own schema, real migrations.",
   "type": "module",
   "engines": {
-    "node": ">=20.11"
+    "node": ">=20.19"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",

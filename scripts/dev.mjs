@@ -6,6 +6,12 @@
  */
 import { spawn } from 'node:child_process'
 
+// A hosting environment may already define PORT for its own purposes, so both
+// halves get their port explicitly instead of inheriting whatever is around.
+const apiPort = process.env.API_PORT ?? '8787'
+const webPort = process.env.WEB_PORT ?? process.env.PORT ?? '5173'
+const apiOrigin = `http://localhost:${apiPort}`
+
 const ESC = String.fromCharCode(27)
 const paint = (code, text) => `${ESC}[${code}m${text}${ESC}[0m`
 
@@ -19,10 +25,10 @@ const stop = (code) => {
   setTimeout(() => process.exit(code), 150)
 }
 
-const run = (name, command, args, color) => {
+const run = (name, command, args, color, env = {}) => {
   const child = spawn(command, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, FORCE_COLOR: '1' },
+    env: { ...process.env, FORCE_COLOR: '1', ...env },
   })
   const prefix = `${paint(color, name.padEnd(6))} | `
   const pipe = (stream) => {
@@ -48,5 +54,11 @@ const run = (name, command, args, color) => {
 process.on('SIGINT', () => stop(0))
 process.on('SIGTERM', () => stop(0))
 
-run('api', 'npx', ['tsx', 'watch', '--clear-screen=false', 'server/index.ts'], '36')
-run('web', 'npx', ['vite'], '35')
+run('api', 'npx', ['tsx', 'watch', '--clear-screen=false', 'server/index.ts'], '36', {
+  PORT: apiPort,
+  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL ?? apiOrigin,
+  WEB_ORIGIN: process.env.WEB_ORIGIN ?? `http://localhost:${webPort}`,
+})
+run('web', 'npx', ['vite', '--port', webPort, '--strictPort'], '35', {
+  API_ORIGIN: process.env.API_ORIGIN ?? apiOrigin,
+})

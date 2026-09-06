@@ -27,12 +27,17 @@ function fillDays(days: number, rows: { date: string; clicks: number; visitors: 
   )
 }
 
-function toBreakdown(rows: { label: string; clicks: number }[]): Breakdown[] {
-  const total = rows.reduce((sum, row) => sum + row.clicks, 0)
-  return rows.map((row) => ({
-    ...row,
-    share: total === 0 ? 0 : Math.round((row.clicks / total) * 1000) / 10,
-  }))
+/**
+ * Shares are computed against every click in the window, not against the six
+ * rows that fit on screen, and the remainder is shown as its own row — so the
+ * column adds up to 100% instead of quietly inflating the leader.
+ */
+function toBreakdown(rows: { label: string; clicks: number }[], total: number): Breakdown[] {
+  const share = (clicks: number) => (total === 0 ? 0 : Math.round((clicks / total) * 1000) / 10)
+  const listed = rows.reduce((sum, row) => sum + row.clicks, 0)
+  const result = rows.map((row) => ({ ...row, share: share(row.clicks) }))
+  if (total > listed) result.push({ label: 'Other', clicks: total - listed, share: share(total - listed) })
+  return result
 }
 
 const ownedLinkIds = (db: Database, userId: string) =>
@@ -109,15 +114,20 @@ export async function breakdown(
     : inArray(clicks.linkId, ownedLinkIds(db, where.userId))
   const target = clicks[column]
 
-  const rows = await db
-    .select({ label: target, clicks: sql<number>`count(*)::int` })
-    .from(clicks)
-    .where(and(scope, gte(clicks.createdAt, startOfDayUtc(days - 1))))
-    .groupBy(target)
-    .orderBy(desc(sql`count(*)`))
-    .limit(limit)
+  const window = and(scope, gte(clicks.createdAt, startOfDayUtc(days - 1)))
 
-  return toBreakdown(rows)
+  const [rows, totals] = await Promise.all([
+    db
+      .select({ label: target, clicks: sql<number>`count(*)::int` })
+      .from(clicks)
+      .where(window)
+      .groupBy(target)
+      .orderBy(desc(sql`count(*)`))
+      .limit(limit),
+    db.select({ value: sql<number>`count(*)::int` }).from(clicks).where(window),
+  ])
+
+  return toBreakdown(rows, totals[0]?.value ?? 0)
 }
 
 export async function recentClicks(db: Database, userId: string, limit = 8) {
