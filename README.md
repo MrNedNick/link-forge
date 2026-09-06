@@ -20,6 +20,9 @@ mock layer anywhere in it.
   what a stateless JWT cannot do.
 - **Every redirect writes a row**: referrer host, country, device, browser, and a
   salted fingerprint of the visitor. Raw IP addresses are never stored.
+- **Links stay editable** — label, tags and expiry — while the destination and the
+  code stay fixed, because changing either would silently repoint a link other
+  people have already shared.
 - **Rate limits that count the right things.** A burst of wrong passwords hits a
   wall; signing in correctly costs nothing, so a shared office address never locks
   the next person out.
@@ -85,11 +88,36 @@ production.
 | | |
 |---|---|
 | **Tags** | A Postgres `text[]` column with a GIN index — one column, no join table, still indexed. Filtering is `tags @> ARRAY[$1]`. |
-| **Codes** | Generated from an alphabet with no `0/O/1/l/I`, so a code survives being read aloud. Collisions retry; a taken custom code is a 409. |
+| **Codes** | Generated from an alphabet with no `0/O/1/l/I`, so a code survives being read aloud. Collisions retry; a taken custom code is a 409, and six simultaneous requests for the same one produce exactly one link. |
+| **Repeat pastes** | Shortening an address you already shortened hands back the code you already have instead of minting a second one for the same destination — unless you asked for a code, a label, tags or an expiry, which means you meant a different link. |
 | **Expiry** | An expired link answers **410 Gone** with a page that explains itself, and an unknown one **404** — never a 500 and never a blank redirect. |
 | **Charts** | Hand-drawn SVG: two series, a keyboard-navigable crosshair, and a visually hidden `<table>` carrying the identical numbers for screen readers. No charting library. |
 | **QR codes** | Rendered server-side as SVG and downloadable, so they scale to a poster and never leave your domain. |
 | **Privacy** | Visitors are counted by `sha256(salt + ip + user-agent)` truncated to 32 characters. Country comes from the CDN's header where there is one, and falls back to `Accept-Language` locally — the dashboard says nothing it cannot back up. |
+
+## What it refuses, and how it says so
+
+Validation is a product surface, not an afterthought. Every rejection comes back
+as one shape — `{ error: { code, message, field } }` — so the browser can put the
+sentence under the input that caused it rather than dumping a serialised
+validation error into the page.
+
+| You paste | It says |
+|---|---|
+| `javascript:alert(1)`, `data:…`, `ftp://…` | Only http and https links can be shortened. |
+| `localhost:3000` | That address needs a real domain name. |
+| `https://user:pw@example.com` | Remove the username and password from the address. |
+| a Link Forge address | That is already a Link Forge address — shortening it would loop. |
+| a code with a space, a dot or one character | A custom code is 2–40 letters, digits, dashes or underscores. |
+| `api`, `health`, `robots.txt` | That code is reserved by the app. |
+| a date that has already passed | The expiry date is already in the past. |
+
+What is stored is never quite what was typed: the destination is normalised
+through the URL parser first, so the control characters that would forge a
+`Location:` header are gone before the row is written, `Tags, tags, TAGS` becomes
+one tag, and a `%` typed into the search box is a percent sign rather than a
+wildcard that matches everything. A malformed id in a path answers 404, not the
+500 that `invalid input syntax for type uuid` would otherwise produce.
 
 ## Both themes, down to 360px
 
@@ -110,7 +138,7 @@ delete — works from the keyboard alone.
 | `npm run dev` | API on 8787 and dashboard on 5173, both restarting on change |
 | `npm run build` | Typechecks both halves, then builds the dashboard into `dist/` |
 | `npm start` | Production mode: one process serving the API, the redirects and the built dashboard |
-| `npm test` | 22 tests — the full API against a real database, plus the dashboard components |
+| `npm test` | 145 tests — the full API against a real database, plus the dashboard components |
 | `npm run lint` / `npm run typecheck` | ESLint and TypeScript, the same two the CI runs |
 | `npm run db:generate` | Turns a schema change into a new SQL migration |
 | `npm run db:migrate` / `npm run db:seed` | Apply migrations; load the demo data |
@@ -121,13 +149,19 @@ delete — works from the keyboard alone.
 The API tests boot the whole app against a private in-memory Postgres — no mocked
 database, no stubbed queries — and walk the scenario a user actually performs:
 create a link, follow it, see the click land in the dashboard attributed to its
-source, then delete it and watch its history go with it. The rest cover the parts
-that are easy to get wrong: ownership (knowing another account's link id gets you
-nothing), identical answers for a wrong password and an unknown account, and both
-rate limits.
+source, then delete it and watch its history go with it.
 
-Measured on the production build: Lighthouse **93 performance / 100 accessibility /
-100 best practices / 100 SEO** on the front page, and **93 / 100 / 100** on the
+The other 140 are there because each of them once failed. Ownership: knowing
+another account's link id gets you nothing. Sign-in: a wrong password and an
+unknown account give the same answer, and only the failures count against the
+rate limit. Input: every rejection above is a test, in both directions — what is
+refused, and what is quietly normalised instead. Concurrency: six requests
+racing for one custom code produce one link and five conflicts. Arithmetic: the
+chart total equals the table total, and breakdown shares add up to 100 because
+the tail is its own row.
+
+Measured on the production build: Lighthouse **94 performance / 100 accessibility /
+100 best practices / 100 SEO** on the front page, and **93 / 100 / 100 / 100** on the
 dashboard. The whole dashboard is 87 kB of JavaScript gzipped.
 
 ## Deploy
