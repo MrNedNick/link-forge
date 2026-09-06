@@ -46,6 +46,7 @@ const renderTable = (props: Partial<Parameters<typeof LinksTable>[0]> = {}) =>
           onDeleted={props.onDeleted ?? vi.fn()}
           onShowQr={vi.fn()}
           onShowStats={vi.fn()}
+          onEdit={vi.fn()}
           onClearFilters={vi.fn()}
           {...props}
         />
