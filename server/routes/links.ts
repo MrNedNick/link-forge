@@ -51,7 +51,7 @@ const listQuery = z.object({
   dir: z.enum(['asc', 'desc']).default('desc'),
 })
 
-const creations = createRateLimiter({ limit: 60, windowMs: 60 * 60_000 })
+export const createLimiter = createRateLimiter({ limit: 60, windowMs: 60 * 60_000 })
 
 function requireUser(user: SessionUser | undefined): SessionUser {
   if (!user) throw apiError(401, 'unauthorized', 'Sign in to continue.')
@@ -111,7 +111,7 @@ export const linkRoutes = new Hono<AppEnv>()
     const db = c.get('db')
     const body = c.req.valid('json')
 
-    const gate = creations.check(`create:${user.id}`)
+    const gate = createLimiter.check(`create:${user.id}`)
     if (!gate.ok) {
       throw apiError(429, 'rate_limited', `Slow down — ${gate.limit} links an hour is the cap.`, {
         retryAfter: gate.retryAfter,
