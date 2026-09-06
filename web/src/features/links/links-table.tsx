@@ -72,8 +72,11 @@ export function LinksTable({
             >
               /{link.code}
             </a>
+            {/* Absolutely positioned helpers (sr-only) inside a horizontally
+                scrolling table push the whole page sideways, so the label is
+                hidden with display instead and the button carries an aria-label. */}
             <CopyButton value={link.shortUrl} label={`Copy the short link for ${link.code}`}>
-              <span className="sr-only sm:not-sr-only">Copy</span>
+              <span className="hidden sm:inline">Copy</span>
             </CopyButton>
           </div>
           {link.title && <p className="truncate text-xs text-text-muted">{link.title}</p>}
@@ -139,7 +142,7 @@ export function LinksTable({
     },
     {
       key: 'actions',
-      header: <span className="sr-only">Actions</span>,
+      header: 'Actions',
       cell: (link) => (
         <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="sm" onClick={() => onShowStats(link)} aria-label={`Statistics for ${link.code}`}>

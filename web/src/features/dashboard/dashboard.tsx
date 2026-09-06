@@ -27,7 +27,7 @@ const RANGES = [
 
 function Panel({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+    <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold tracking-wide text-text-muted uppercase">{title}</h2>
         {action}

@@ -31,7 +31,7 @@ export function ClicksChart({ data }: { data: DayPoint[] }) {
   const [active, setActive] = useState<number | null>(null)
 
   const chart = useMemo(() => {
-    const w = Math.max(width, 320)
+    const w = Math.max(width, 260)
     const innerW = w - PADDING.left - PADDING.right
     const innerH = HEIGHT - PADDING.top - PADDING.bottom
     const max = Math.max(...data.map((d) => d.clicks), 1)
@@ -76,7 +76,10 @@ export function ClicksChart({ data }: { data: DayPoint[] }) {
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative w-full min-w-0">
+      {/* A zero-height ruler: measuring the SVG's own box would feed its width
+          back into the measurement and stop the chart from ever shrinking. */}
+      <div ref={ref} className="h-0 w-full" aria-hidden="true" />
       <svg
         role="img"
         tabIndex={0}
@@ -84,7 +87,7 @@ export function ClicksChart({ data }: { data: DayPoint[] }) {
         width="100%"
         height={HEIGHT}
         viewBox={`0 0 ${chart.w} ${HEIGHT}`}
-        className="touch-pan-y rounded-md focus-visible:outline-2 focus-visible:outline-accent"
+        className="block w-full touch-pan-y rounded-md focus-visible:outline-2 focus-visible:outline-accent"
         onPointerMove={move}
         onPointerLeave={() => setActive(null)}
         onKeyDown={onKeyDown}
@@ -176,6 +179,10 @@ export function ClicksChart({ data }: { data: DayPoint[] }) {
           </p>
         </div>
       )}
+
+      {/* The final point is the day in progress. Without saying so, the chart
+          reads as a collapse in traffic every single morning. */}
+      <p className="mt-2 text-right text-[11px] text-text-muted">Today is still counting.</p>
 
       <table className="sr-only">
         <caption>Clicks and unique visitors per day</caption>
