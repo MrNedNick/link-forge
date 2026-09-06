@@ -1,13 +1,13 @@
 import { count, eq, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { zValidator } from '@hono/zod-validator'
+import { valid } from '../lib/validation.js'
 import { clicks, links } from '../db/schema.js'
 import { breakdown, recentClicks, startOfDayUtc, timeline } from '../lib/analytics.js'
 import { apiError } from '../lib/http.js'
 import { rangeQuery, resolveDays } from '../lib/range.js'
 import type { AppEnv } from '../types.js'
 
-export const statsRoutes = new Hono<AppEnv>().get('/overview', zValidator('query', rangeQuery), async (c) => {
+export const statsRoutes = new Hono<AppEnv>().get('/overview', valid('query', rangeQuery), async (c) => {
   const user = c.get('user')
   if (!user) throw apiError(401, 'unauthorized', 'Sign in to continue.')
 

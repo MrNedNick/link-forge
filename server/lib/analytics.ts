@@ -43,18 +43,19 @@ function toBreakdown(rows: { label: string; clicks: number }[], total: number): 
 const ownedLinkIds = (db: Database, userId: string) =>
   db.select({ id: links.id }).from(links).where(eq(links.userId, userId))
 
+/** Keyed by link id; the field names match what the API returns, on purpose. */
 export async function clickTotals(db: Database, linkIds: string[]) {
-  if (linkIds.length === 0) return new Map<string, { total: number; visitors: number }>()
+  if (linkIds.length === 0) return new Map<string, { clicks: number; visitors: number }>()
   const rows = await db
     .select({
       linkId: clicks.linkId,
-      total: sql<number>`count(*)::int`,
+      clicks: sql<number>`count(*)::int`,
       visitors: sql<number>`count(distinct ${clicks.visitorHash})::int`,
     })
     .from(clicks)
     .where(inArray(clicks.linkId, linkIds))
     .groupBy(clicks.linkId)
-  return new Map(rows.map((row) => [row.linkId, { total: row.total, visitors: row.visitors }]))
+  return new Map(rows.map((row) => [row.linkId, { clicks: row.clicks, visitors: row.visitors }]))
 }
 
 /** Per-link daily counts for the row sparklines — one query for the whole table. */

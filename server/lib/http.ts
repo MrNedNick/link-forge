@@ -11,9 +11,19 @@ export type ApiErrorCode =
   | 'expired'
 
 /** Every failure leaves the API in the same shape, so the client has one branch. */
-export function apiError(status: number, code: ApiErrorCode, message: string, extra?: Record<string, unknown>) {
+export function apiError(
+  status: number,
+  code: ApiErrorCode,
+  message: string,
+  extra?: Record<string, unknown>,
+) {
+  const headers: Record<string, string> = {}
+  // A 429 without Retry-After makes every client guess. Send the header too,
+  // not just the number in the body.
+  if (typeof extra?.retryAfter === 'number') headers['retry-after'] = String(extra.retryAfter)
+
   return new HTTPException(status as never, {
-    res: Response.json({ error: { code, message, ...extra } }, { status }),
+    res: Response.json({ error: { code, message, ...extra } }, { status, headers }),
   })
 }
 

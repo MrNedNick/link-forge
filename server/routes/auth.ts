@@ -1,7 +1,7 @@
-import { zValidator } from '@hono/zod-validator'
 import { eq, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { valid } from '../lib/validation.js'
 import { sessions, users } from '../db/schema.js'
 import { apiError, clientIp } from '../lib/http.js'
 import { hashPassword, verifyPassword } from '../lib/password.js'
@@ -16,8 +16,18 @@ import {
 import type { AppEnv } from '../types.js'
 
 const credentials = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address.')),
-  password: z.string().min(8, 'Use at least 8 characters.').max(200),
+  // 254 is the longest address SMTP will carry; without a cap the column is an
+  // open invitation to store a megabyte of nothing.
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(254, 'That email address is too long.')
+    .pipe(z.email('Enter a valid email address.')),
+  password: z
+    .string()
+    .min(8, 'Use at least 8 characters for the password.')
+    .max(200, 'Keep the password under 200 characters.'),
 })
 
 // Brute force is the only real threat to a password form. Only failed attempts
@@ -30,7 +40,7 @@ const tooManyAttempts = (retryAfter: number) =>
 
 export const authRoutes = new Hono<AppEnv>()
 
-  .post('/register', zValidator('json', credentials), async (c) => {
+  .post('/register', valid('json', credentials), async (c) => {
     const ip = clientIp(c)
     const gate = attempts.peek(`auth:${ip}`)
     if (!gate.ok) throw tooManyAttempts(gate.retryAfter)
@@ -59,7 +69,7 @@ export const authRoutes = new Hono<AppEnv>()
     return c.json({ user }, 201)
   })
 
-  .post('/login', zValidator('json', credentials), async (c) => {
+  .post('/login', valid('json', credentials), async (c) => {
     const ip = clientIp(c)
     const gate = attempts.peek(`auth:${ip}`)
     if (!gate.ok) throw tooManyAttempts(gate.retryAfter)
