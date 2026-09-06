@@ -28,9 +28,12 @@ export function createApp({ db, quiet = false }: { db: Database; quiet?: boolean
 
   app.get('/health', (c) => c.json({ ok: true, database: env.databaseUrl ? 'postgres' : 'pglite' }))
 
-  app.route('/api/auth', authRoutes)
-  app.route('/api/links', linkRoutes)
-  app.route('/api/stats', statsRoutes)
+  // Chained on purpose: the chain is what carries the route types to the
+  // browser, so the dashboard's API client is generated from the server.
+  const routes = app
+    .route('/api/auth', authRoutes)
+    .route('/api/links', linkRoutes)
+    .route('/api/stats', statsRoutes)
 
   app.all('/api/*', (c) =>
     c.json({ error: { code: 'not_found', message: 'No such endpoint.' } }, 404),
@@ -59,7 +62,8 @@ export function createApp({ db, quiet = false }: { db: Database; quiet?: boolean
     })
   })
 
-  return app
+  return routes
 }
 
 export type App = ReturnType<typeof createApp>
+export type AppType = App

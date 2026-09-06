@@ -70,7 +70,7 @@ export const authRoutes = new Hono<AppEnv>()
 
     const session = await createSession(db, user.id, c.req.header('user-agent'))
     setSessionCookie(c, session.token, session.expiresAt)
-    return c.json({ user: { id: user.id, email: user.email, createdAt: user.createdAt } })
+    return c.json({ user: { id: user.id, email: user.email, createdAt: user.createdAt } }, 200)
   })
 
   .post('/logout', async (c) => {
@@ -79,11 +79,9 @@ export const authRoutes = new Hono<AppEnv>()
     return c.body(null, 204)
   })
 
-  .get('/me', async (c) => {
-    const user = c.get('user')
-    if (!user) throw apiError(401, 'unauthorized', 'Sign in to continue.')
-    return c.json({ user })
-  })
+  // A session probe, not a protected resource: "nobody is signed in" is a
+  // successful answer, and answering 401 would only fill the console with noise.
+  .get('/me', async (c) => c.json({ user: c.get('user') ?? null }, 200))
 
   .delete('/sessions', async (c) => {
     const user = c.get('user')

@@ -1,16 +1,18 @@
 import { count, eq, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
 import { clicks, links } from '../db/schema.js'
 import { breakdown, recentClicks, startOfDayUtc, timeline } from '../lib/analytics.js'
 import { apiError } from '../lib/http.js'
+import { rangeQuery, resolveDays } from '../lib/range.js'
 import type { AppEnv } from '../types.js'
 
-export const statsRoutes = new Hono<AppEnv>().get('/overview', async (c) => {
+export const statsRoutes = new Hono<AppEnv>().get('/overview', zValidator('query', rangeQuery), async (c) => {
   const user = c.get('user')
   if (!user) throw apiError(401, 'unauthorized', 'Sign in to continue.')
 
   const db = c.get('db')
-  const days = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 365)
+  const days = resolveDays(c.req.valid('query').days)
   const scope = { userId: user.id }
   const owned = db.select({ id: links.id }).from(links).where(eq(links.userId, user.id))
 
@@ -72,5 +74,5 @@ export const statsRoutes = new Hono<AppEnv>().get('/overview', async (c) => {
     devices,
     topLinks,
     recent,
-  })
+  }, 200)
 })

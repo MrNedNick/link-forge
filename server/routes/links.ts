@@ -7,6 +7,7 @@ import { links } from '../db/schema.js'
 import { breakdown, clickTotals, sparklines, timeline } from '../lib/analytics.js'
 import { apiError } from '../lib/http.js'
 import { createRateLimiter } from '../lib/rate-limit.js'
+import { rangeQuery, resolveDays } from '../lib/range.js'
 import { generateCode, isReservedCode, isValidCode } from '../lib/slug.js'
 import { env } from '../env.js'
 import type { AppEnv, SessionUser } from '../types.js'
@@ -102,7 +103,7 @@ export const linkRoutes = new Hono<AppEnv>()
     }
 
     const tags = [...new Set(rows.flatMap((row) => row.tags))].sort()
-    return c.json({ items, tags })
+    return c.json({ items, tags }, 200)
   })
 
   .post('/', zValidator('json', createBody), async (c) => {
@@ -173,7 +174,7 @@ export const linkRoutes = new Hono<AppEnv>()
       .returning()
 
     if (!updated) throw apiError(404, 'not_found', 'That link is gone.')
-    return c.json({ link: { ...updated, shortUrl: shortUrl(updated.code) } })
+    return c.json({ link: { ...updated, shortUrl: shortUrl(updated.code) } }, 200)
   })
 
   .delete('/:id', async (c) => {
@@ -212,10 +213,10 @@ export const linkRoutes = new Hono<AppEnv>()
     })
   })
 
-  .get('/:id/stats', async (c) => {
+  .get('/:id/stats', zValidator('query', rangeQuery), async (c) => {
     const user = requireUser(c.get('user'))
     const db = c.get('db')
-    const days = Math.min(Math.max(Number(c.req.query('days') ?? 30), 1), 365)
+    const days = resolveDays(c.req.valid('query').days)
 
     const [link] = await db
       .select()
@@ -241,5 +242,5 @@ export const linkRoutes = new Hono<AppEnv>()
       devices,
       clicks: totals.get(link.id)?.total ?? 0,
       visitors: totals.get(link.id)?.visitors ?? 0,
-    })
+    }, 200)
   })
