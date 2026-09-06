@@ -7,6 +7,9 @@ import { redirectLimiter } from '../routes/redirect.js'
 
 export type Harness = Awaited<ReturnType<typeof createHarness>>
 
+/** A Response whose body type is known, so a test does not have to cast it. */
+export type TypedResponse<T> = Omit<Response, 'json'> & { json: () => Promise<T> }
+
 /** A whole app on a private in-memory Postgres — no fixtures, no mocked database. */
 export async function createHarness() {
   const handle = await createDatabase({ url: '', pgliteDir: ':memory:' })
@@ -31,10 +34,8 @@ export async function createHarness() {
         if (set) cookie = set.split(';')[0] ?? cookie
         return response
       },
-      json<T>(path: string, method: string, body: unknown) {
-        return this.request(path, { method, body: JSON.stringify(body) }) as Promise<
-          Response & { json: () => Promise<T> }
-        >
+      json<T>(path: string, method: string, body: unknown): Promise<TypedResponse<T>> {
+        return this.request(path, { method, body: JSON.stringify(body) }) as Promise<TypedResponse<T>>
       },
       forget() {
         cookie = ''
@@ -46,16 +47,15 @@ export async function createHarness() {
 }
 
 export async function signUp(harness: Harness, email: string, password = 'super-secret-1') {
-  const response = await harness.client.json(`/api/auth/register`, 'POST', { email, password })
+  const response = await harness.client.json<{ user: { id: string; email: string } }>(
+    '/api/auth/register',
+    'POST',
+    { email, password },
+  )
   if (response.status !== 201) throw new Error(`register failed: ${response.status}`)
   return response
 }
 
-export async function createLink(harness: Harness, body: Record<string, unknown>) {
-  const response = await harness.client.json<{ link: { id: string; code: string } }>(
-    '/api/links',
-    'POST',
-    body,
-  )
-  return response
+export function createLink(harness: Harness, body: Record<string, unknown>) {
+  return harness.client.json<{ link: { id: string; code: string } }>('/api/links', 'POST', body)
 }

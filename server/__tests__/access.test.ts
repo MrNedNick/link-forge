@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createHarness, createLink, signUp, type Harness } from './harness.js'
+import { createHarness, createLink, signUp, type Harness, type TypedResponse } from './harness.js'
 import { authLimiter } from '../routes/auth.js'
 import { createLimiter } from '../routes/links.js'
 
@@ -88,15 +88,15 @@ describe('ownership', () => {
 describe('rate limits', () => {
   it('stops a burst of sign-in attempts with a retry hint', async () => {
     authLimiter.reset()
-    let last: Response | undefined
+    let last: TypedResponse<{ error: { code: string; retryAfter: number } }> | undefined
     for (let attempt = 0; attempt < 14; attempt += 1) {
-      last = await harness.client.json('/api/auth/login', 'POST', {
+      last = await harness.client.json<{ error: { code: string; retryAfter: number } }>('/api/auth/login', 'POST', {
         email: 'someone@example.com',
         password: 'not-the-password',
       })
     }
     expect(last?.status).toBe(429)
-    const body = (await last!.json()) as { error: { code: string; retryAfter: number } }
+    const body = await last!.json()
     expect(body.error.code).toBe('rate_limited')
     expect(body.error.retryAfter).toBeGreaterThan(0)
   })
