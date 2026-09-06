@@ -13,6 +13,7 @@ import { Breakdown } from '../../ui/breakdown'
 import { ClicksChart } from '../../ui/clicks-chart'
 import { Container, PageShell } from '../../ui/page-shell'
 import { Stat } from '../../ui/stat'
+import { CreatedLink } from '../links/created-link'
 import { CreateLinkForm } from '../links/create-link-form'
 import { LinksTable } from '../links/links-table'
 import { LinkStatsDialog } from '../links/link-stats-dialog'
@@ -55,6 +56,7 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
   const [days, setDays] = useState(30)
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState<string | null>(null)
+  const [created, setCreated] = useState<LinkItem | null>(null)
   const [qrLink, setQrLink] = useState<LinkItem | null>(null)
   const [statsLink, setStatsLink] = useState<LinkItem | null>(null)
 
@@ -88,11 +90,13 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
 
   const onCreated = (link: LinkItem) => {
     links.setData((current) => ({ ...current, items: [link, ...current.items] }))
+    setCreated(link)
     void overview.reload()
   }
 
   const onDeleted = (id: string) => {
     links.setData((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }))
+    setCreated((current) => (current?.id === id ? null : current))
     void overview.reload()
   }
 
@@ -138,6 +142,10 @@ export function Dashboard({ user, onSignOut }: { user: SessionUser; onSignOut: (
         </div>
 
         <CreateLinkForm knownTags={knownTags} onCreated={onCreated} />
+
+        {created && (
+          <CreatedLink link={created} onShowQr={setQrLink} onDismiss={() => setCreated(null)} />
+        )}
 
         {overview.error ? (
           <ErrorPanel message={overview.error} onRetry={refreshAll} />
