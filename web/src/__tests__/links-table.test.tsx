@@ -55,7 +55,13 @@ const renderTable = (props: Partial<Parameters<typeof LinksTable>[0]> = {}) =>
 
 beforeEach(() => {
   remove.mockReset()
-  remove.mockResolvedValue({ ok: true, status: 204, json: async () => undefined })
+  // A real 204 carries no body, so json() rejects. Mocking it any other way
+  // hides exactly the bug this asserts against.
+  remove.mockResolvedValue({
+    ok: true,
+    status: 204,
+    json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+  })
 })
 
 describe('LinksTable', () => {

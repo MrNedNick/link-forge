@@ -43,6 +43,8 @@ type ZodIssues = { error?: { message?: string; issues?: { message?: string }[] }
  * `ApiError` for the caller to catch.
  */
 export async function unwrap<R extends AnyResponse>(response: R): Promise<SuccessBody<R>> {
+  // 204 has no body at all, and calling json() on it throws.
+  if (response.status === 204) return undefined as SuccessBody<R>
   if (response.ok) return (await response.json()) as SuccessBody<R>
 
   let body: ApiErrorShape = { code: 'invalid', message: 'Something went wrong.' }
