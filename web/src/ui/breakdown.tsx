@@ -36,7 +36,8 @@ export function Breakdown({
             </span>
             <span className="shrink-0 tnum text-text-muted">
               {formatFull(row.clicks)}
-              <span className="ml-1.5 text-xs opacity-70">{row.share}%</span>
+              {/* No opacity here: dimming muted text again drops it under AA. */}
+              <span className="ml-1.5 text-xs">{row.share}%</span>
             </span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-raised">

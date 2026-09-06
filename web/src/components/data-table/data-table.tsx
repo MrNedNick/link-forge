@@ -131,15 +131,23 @@ export function DataTable<T>({
                   <th
                     key={column.key}
                     scope="col"
+                    // aria-sort belongs on the column header, not on the button
+                    // inside it: on a <button> the attribute is simply invalid.
+                    aria-sort={
+                      column.sortable
+                        ? active
+                          ? sort!.direction === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                        : undefined
+                    }
                     className={cn('px-4 py-2.5 font-medium text-text-muted', column.className)}
                   >
                     {column.sortable ? (
                       <button
                         type="button"
                         onClick={() => toggleSort(column)}
-                        aria-sort={
-                          active ? (sort!.direction === 'asc' ? 'ascending' : 'descending') : 'none'
-                        }
                         className="inline-flex items-center gap-1 hover:text-text"
                       >
                         {column.header}

@@ -88,7 +88,7 @@ export function Landing({
           <ol className="mt-8 grid gap-6 sm:grid-cols-3">
             {STEPS.map((step, index) => (
               <li key={step.title} className="rounded-xl border border-border bg-surface p-5">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-sm font-semibold text-white tnum">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-sm font-semibold text-on-accent tnum">
                   {index + 1}
                 </span>
                 <h3 className="mt-4 font-medium">{step.title}</h3>

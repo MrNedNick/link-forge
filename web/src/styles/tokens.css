@@ -11,6 +11,10 @@
   --color-text-muted: #5b6472;
   --color-accent: #3b6cf6;
   --color-accent-hover: #2f59d1;
+  /* Text and icons drawn on top of an accent or danger fill. White fails AA on
+     the lighter dark-theme accents, so the pairing is a token, not a constant. */
+  --color-on-accent: #ffffff;
+  --color-on-danger: #ffffff;
   --color-danger: #d6353b;
   --color-success: #1a9c5c;
   --color-warning: #c07a12;
@@ -35,6 +39,8 @@
     --color-text-muted: #9aa4b2;
     --color-accent: #5b86ff;
     --color-accent-hover: #7599ff;
+    --color-on-accent: #10131a;
+    --color-on-danger: #1a0d0e;
     --color-danger: #ff6b70;
     --color-success: #35c07d;
     --color-warning: #e0a340;
@@ -51,6 +57,8 @@
       --color-text-muted: #9aa4b2;
       --color-accent: #5b86ff;
       --color-accent-hover: #7599ff;
+      --color-on-accent: #10131a;
+      --color-on-danger: #1a0d0e;
       --color-danger: #ff6b70;
       --color-success: #35c07d;
       --color-warning: #e0a340;

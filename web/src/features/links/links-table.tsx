@@ -145,7 +145,7 @@ export function LinksTable({
       header: 'Actions',
       cell: (link) => (
         <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={() => onShowStats(link)} aria-label={`Statistics for ${link.code}`}>
+          <Button variant="ghost" size="sm" onClick={() => onShowStats(link)} aria-label={`Stats for ${link.code}`}>
             Stats
           </Button>
           <Button variant="ghost" size="sm" onClick={() => onShowQr(link)} aria-label={`QR code for ${link.code}`}>

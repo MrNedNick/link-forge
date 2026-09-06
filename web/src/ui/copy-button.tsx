@@ -31,7 +31,9 @@ export function CopyButton({ value, label = 'Copy short link', className, childr
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? 'Copied' : label}
+      // The accessible name has to contain the visible label, or a voice user
+      // cannot say the name of the button they are looking at.
+      aria-label={copied ? `Copied. ${label}` : label}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium transition-colors',
         copied ? 'text-success' : 'text-text-muted hover:bg-surface-raised hover:text-text',

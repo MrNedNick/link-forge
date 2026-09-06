@@ -54,7 +54,7 @@ export function Footer() {
 export function PageShell({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <a className="skip-link rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white" href="#main">
+      <a className="skip-link rounded-lg bg-accent px-3 py-2 text-sm font-medium text-on-accent" href="#main">
         Skip to content
       </a>
       <Header actions={actions} />
