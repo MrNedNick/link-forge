@@ -1,0 +1,31 @@
+# Fly.io deployment. The app is a long-running Node process with a Postgres
+# database, so a static host is the wrong shape for it: pick anywhere that can
+# run a container and hand it a DATABASE_URL.
+app = "link-forge"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8787"
+  SECURE_COOKIES = "1"
+  # PUBLIC_BASE_URL must be the origin serving the redirects, because short
+  # links are built from it. Set it with: fly secrets set PUBLIC_BASE_URL=...
+  # DATABASE_URL comes from `fly postgres attach`.
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
