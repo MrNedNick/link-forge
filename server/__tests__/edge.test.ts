@@ -58,6 +58,57 @@ describe('shortening the same address twice', () => {
   })
 })
 
+describe('two requests at once', () => {
+  it('gives the contested custom code to exactly one of them', async () => {
+    createLimiter.reset()
+    const attempts = await Promise.all(
+      Array.from({ length: 6 }, (_, i) =>
+        createLink(harness, { url: `https://example.com/race-${i}`, code: 'contested', tags: [] }),
+      ),
+    )
+
+    expect(attempts.filter((r) => r.status === 201)).toHaveLength(1)
+    expect(attempts.filter((r) => r.status === 409)).toHaveLength(5)
+
+    const list = await harness.client.request('/api/links')
+    const items = ((await list.json()) as { items: { code: string }[] }).items
+    expect(items.filter((item) => item.code === 'contested')).toHaveLength(1)
+  })
+
+  it('mints distinct codes when several links are created together', async () => {
+    createLimiter.reset()
+    await Promise.all(
+      Array.from({ length: 12 }, (_, i) => createLink(harness, { url: `https://example.com/p-${i}`, tags: [] })),
+    )
+
+    const list = await harness.client.request('/api/links')
+    const items = ((await list.json()) as { items: { code: string }[] }).items
+    expect(items).toHaveLength(12)
+    expect(new Set(items.map((item) => item.code)).size).toBe(12)
+  })
+})
+
+describe('a busy account', () => {
+  it('lists every link and keeps the click counts attached to the right ones', async () => {
+    createLimiter.reset()
+    redirectLimiter.reset()
+    for (let i = 0; i < 30; i += 1) {
+      await createLink(harness, { url: `https://example.com/many-${i}`, code: `many-${i}`, tags: [] })
+    }
+    for (let i = 0; i < 4; i += 1) await harness.client.request('/many-7')
+    await harness.client.request('/many-3')
+
+    const list = await harness.client.request('/api/links?sort=clicks&dir=desc')
+    const items = ((await list.json()) as { items: { code: string; clicks: number }[] }).items
+
+    expect(items).toHaveLength(30)
+    expect(items[0]).toMatchObject({ code: 'many-7', clicks: 4 })
+    expect(items[1]).toMatchObject({ code: 'many-3', clicks: 1 })
+    expect(items.slice(2).every((item) => item.clicks === 0)).toBe(true)
+    expect(items.reduce((sum, item) => sum + item.clicks, 0)).toBe(5)
+  })
+})
+
 describe('the redirect endpoint', () => {
   beforeEach(async () => {
     redirectLimiter.reset()
